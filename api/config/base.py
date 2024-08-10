@@ -95,3 +95,6 @@ class Config:
         "hair drier",
         "toothbrush",
     ]
+    # モデル
+    MODEL_BUCKET_NAME = "detector-api"
+    MODEL_KEY = "model.pt"
