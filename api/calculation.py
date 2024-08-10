@@ -1,5 +1,4 @@
 from pathlib import Path
-import io
 
 import numpy as np
 import cv2
@@ -14,18 +13,12 @@ from flask_api.api.preprocess import image_to_tensor
 basedir = Path(__file__).parent.parent
 
 
-def load_model():
+def load_model(model_dir):
     s3 = boto3.client("s3")
 
     bucket_name = current_app.config["MODEL_BUCKET_NAME"]
     model_name = current_app.config["MODEL_KEY"]
-    buffer = io.BytesIO()
-    s3.download_fileobj(bucket_name, model_name, buffer)
-    buffer.seek(0)
-
-    model = torch.load(buffer)
-
-    return model
+    s3.download_file(bucket_name, model_name, model_dir)
 
 
 def detection(request):
@@ -36,10 +29,14 @@ def detection(request):
     image, filename = load_image(request)
     image_tensor = image_to_tensor(image)
 
-    try:
-        model = load_model()
-    except Exception as e:
-        return jsonify({"message": str(e)}), 404
+    model_dir = str(basedir / "tmp" / "model.pt")
+    if not Path(model_dir).exists():
+        try:
+            load_model(model_dir)
+        except Exception as e:
+            return jsonify({"error": "failed to load model"}), 500
+
+    model = torch.load(model_dir)
 
     model = model.eval()
 
